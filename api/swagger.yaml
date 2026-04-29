@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: http2country — Country Intelligence API
+  description: |
+    Returns structured country information from the letstool CDN database.
+
+    Accepts **ISO 3166-1 alpha-2** (e.g. `FR`), **alpha-3** (e.g. `FRA`), or
+    **numeric** codes (e.g. `250`). All codes are **case-insensitive**.
+
+    The database is built automatically from a gzipped CSV at
+    `https://cdn.letstool.net/country/csv` and refreshed every 24 hours.
+
+    Each country record includes: identity codes, geography, languages,
+    currencies, calling codes, TLDs, demonyms, economics (GDP, GINI),
+    and a full legal/regulatory profile (EU, EEA, Schengen, GDPR, VAT,
+    OFAC, sanctions, FATF status).
+  version: 1.0.0
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local server
+
+paths:
+
+  /api/v1/country:
+    post:
+      summary: Look up a country by ISO2, ISO3, or numeric code
+      description: |
+        Accepts a single country identifier and returns the full country record.
+
+        - `ISO2`: 2-letter code, e.g. `"FR"`, `"fr"`, `"De"`
+        - `ISO3`: 3-letter code, e.g. `"FRA"`, `"deu"`
+        - `Numeric`: numeric string with or without leading zeros, e.g. `"250"`, `"076"`, `"76"`
+
+      operationId: getCountry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CountryRequest"
+            examples:
+              iso2:
+                summary: ISO2 lookup
+                value:
+                  country: "FR"
+              iso3:
+                summary: ISO3 lookup
+                value:
+                  country: "FRA"
+              numeric:
+                summary: Numeric lookup
+                value:
+                  country: "250"
+              lowercase:
+                summary: Lowercase ISO2
+                value:
+                  country: "de"
+
+      responses:
+        "200":
+          description: Country lookup result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountryResponse"
+        "405":
+          description: Method not allowed — only POST is accepted
+
+  /db/country:
+    get:
+      summary: Download the current country.mmdb database file
+      description: |
+        Serves the current `country.mmdb` binary. Useful for peer instances
+        that wish to synchronise without fetching from the CDN.
+      operationId: getDB
+      responses:
+        "200":
+          description: country.mmdb binary file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Database not yet built
+
+  /openapi.json:
+    get:
+      summary: OpenAPI 3.1 specification (this document, JSON format)
+      operationId: getOpenAPI
+      responses:
+        "200":
+          description: OpenAPI JSON document
+          content:
+            application/json: {}
+
+  /:
+    get:
+      summary: Embedded interactive web UI
+      description: |
+        Single-file web UI supporting 15 languages, dark/light themes,
+        RTL layout for Arabic and Urdu, and full country data display.
+      operationId: getUI
+      responses:
+        "200":
+          description: HTML web UI
+          content:
+            text/html: {}
+
+components:
+  schemas:
+
+    CountryRequest:
+      type: object
+      required: [country]
+      properties:
+        country:
+          type: string
+          description: >
+            ISO 3166-1 alpha-2 (e.g. "FR"), alpha-3 (e.g. "FRA"), or numeric
+            code (e.g. "250"). Case-insensitive. Leading zeros optional for numeric.
+          example: "FR"
+
+    CountryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [SUCCESS, NOTFOUND, ERROR]
+          description: |
+            - `SUCCESS`: country found; `answer` is populated.
+            - `NOTFOUND`: unknown or unrecognised code; `answer` is absent.
+            - `ERROR`: malformed request or database not yet initialised.
+        query:
+          type: string
+          description: The original query string as submitted.
+        answer:
+          $ref: "#/components/schemas/CountryAnswer"
+
+    CountryAnswer:
+      type: object
+      required: [iso2, iso3]
+      properties:
+        iso2:             { type: string, description: "ISO 3166-1 alpha-2 (uppercase)." }
+        iso3:             { type: string, description: "ISO 3166-1 alpha-3 (uppercase)." }
+        numeric_code:     { type: string, description: "ISO 3166-1 numeric code (zero-padded)." }
+        fifa:             { type: string, description: "FIFA country code." }
+        status:           { type: string, description: "Assignment status (e.g. 'officially-assigned')." }
+        independent:      { type: boolean }
+        un_member:        { type: boolean }
+        name_common:      { type: string, description: "Common English name." }
+        name_official:    { type: string, description: "Official English name." }
+        region:           { type: string }
+        subregion:        { type: string }
+        capital:          { type: string }
+        latitude:         { type: number }
+        longitude:        { type: number }
+        area_sq_km:       { type: number }
+        landlocked:       { type: boolean }
+        borders:
+          type: array
+          items: { type: string }
+          description: "ISO2 codes of neighbouring countries."
+        language_codes:
+          type: array
+          items: { type: string }
+        currency_codes:
+          type: array
+          items: { type: string }
+        tld:
+          type: array
+          items: { type: string }
+          description: "Country-code top-level domains."
+        calling_codes:
+          type: array
+          items: { type: string }
+        demonym_eng_m:    { type: string, description: "English masculine demonym." }
+        demonym_eng_f:    { type: string, description: "English feminine demonym." }
+        gini_year:        { type: string }
+        gini_value:       { type: number }
+        gdp_current_usd:  { type: number, description: "GDP in current USD." }
+        gdp_per_capita_usd: { type: number }
+        gdp_year:         { type: string }
+        flag_emoji:       { type: string }
+        legal_eu:         { type: boolean, description: "EU member state." }
+        legal_eea:        { type: boolean, description: "EEA member." }
+        legal_schengen:   { type: boolean, description: "Schengen Area member." }
+        legal_gdpr:       { type: boolean, description: "GDPR applies." }
+        legal_data_residency: { type: boolean }
+        legal_vat_rate:   { type: number, description: "Standard VAT/GST rate (%)." }
+        legal_vat_name:   { type: string, description: "Local VAT name." }
+        legal_digital_vat: { type: boolean }
+        legal_ofac:       { type: boolean, description: "On OFAC sanctions list." }
+        legal_eu_sanction: { type: boolean }
+        legal_un_sanction: { type: boolean }
+        legal_fatf:       { type: string, description: "FATF status string (e.g. 'grey-list') or empty string." }

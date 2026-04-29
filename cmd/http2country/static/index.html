@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<title>http2country — Country Intelligence</title>
+<style>
+  :root{
+    --bg:#0a0e14;--surface:#0f1520;--border:#1e2d45;--border-hi:#2a4060;
+    --accent:#00d4ff;--accent2:#0090cc;--accent-dim:#003a52;
+    --text:#c8d8e8;--text-dim:#4a6480;--text-mid:#7a9ab8;
+    --ok:#00d48a;--ok-dim:#003d28;--warn:#ffb340;--warn-dim:#3d2a00;
+    --err:#ff4e6a;--err-dim:#3d0010;
+    --green:#00d48a;--green-dim:#003d28;
+    --red:#ff4e6a;--red-dim:#3d0010;
+    --gold:#ffd832;--gold-dim:#2a2000;
+    --purple:#b48eff;--purple-dim:#1a0a30;
+    --grid-a:rgba(30,45,69,.30);--grid-b:rgba(30,45,69,.15);
+    --radial:rgba(0,180,255,.07);--panel-tint:rgba(0,212,255,.04);
+    --raw-bg:#070b10;--ring:#00d4ff;
+    --sel-bg:#0f1520;
+    --mono:'Courier New','Lucida Console',monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  }
+  [data-theme="light"]{
+    --bg:#eef3f9;--surface:#fff;--border:#c8d8ec;--border-hi:#a0bcd8;
+    --accent:#0070a0;--accent2:#005278;--accent-dim:#d4eaf8;
+    --text:#152030;--text-dim:#7898b8;--text-mid:#3a6080;
+    --ok:#006e48;--ok-dim:#d0f0e4;--warn:#8c5200;--warn-dim:#fff0d0;
+    --err:#b0002a;--err-dim:#fde8ef;
+    --green:#006e48;--green-dim:#d0f0e4;
+    --red:#b0002a;--red-dim:#fde8ef;
+    --gold:#7a6000;--gold-dim:#fffde0;
+    --purple:#6040b0;--purple-dim:#f0eaff;
+    --grid-a:rgba(150,190,225,.28);--grid-b:rgba(150,190,225,.14);
+    --radial:rgba(0,120,180,.06);--panel-tint:rgba(0,112,160,.04);
+    --raw-bg:#f4f8fc;--ring:#005278;--sel-bg:#fff;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  .skip-link{position:absolute;top:-100px;left:16px;z-index:9999;background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:.85rem;font-weight:700;padding:10px 18px;border-radius:0 0 6px 6px;text-decoration:none;letter-spacing:.08em;transition:top .2s}
+  .skip-link:focus{top:0;outline:3px solid var(--ring);outline-offset:2px}
+  :focus-visible{outline:2px solid var(--ring);outline-offset:3px;border-radius:3px}
+  :focus:not(:focus-visible){outline:none}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 60px;
+    background-image:radial-gradient(ellipse 80% 40% at 50% -10%,var(--radial) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,var(--grid-a) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,var(--grid-b) 40px);
+    transition:background .3s,color .3s}
+  header{width:100%;max-width:1200px;padding:32px 0 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);margin-bottom:32px;transition:border-color .3s}
+  .logo-globe{width:42px;height:42px;flex-shrink:0}
+  .header-text h1{font-family:var(--mono);font-size:1.05rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);transition:color .3s}
+  .header-text p{font-size:.68rem;color:var(--text-dim);letter-spacing:.07em;text-transform:uppercase;margin-top:3px;transition:color .3s}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .theme-toggle{display:flex;align-items:center;gap:7px;cursor:pointer;border:1px solid var(--border);background:transparent;border-radius:20px;padding:5px 11px 5px 8px;transition:border-color .2s,background .2s,color .2s;color:var(--text-dim)}
+  .theme-toggle:hover,.theme-toggle:focus-visible{border-color:var(--accent2);background:var(--accent-dim);color:var(--accent)}
+  .theme-icon{font-size:.85rem;line-height:1;transition:transform .4s}
+  .theme-toggle:hover .theme-icon{transform:rotate(20deg)}
+  .theme-track{width:28px;height:15px;background:var(--border);border-radius:8px;position:relative;flex-shrink:0;transition:background .3s}
+  .theme-thumb{position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--text-dim);transition:transform .3s,background .3s}
+  [data-theme="light"] .theme-track{background:var(--accent2)}
+  [data-theme="light"] .theme-thumb{background:#fff;transform:translateX(13px)}
+  .theme-label{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+  .lang-wrap{position:relative;display:flex;align-items:center}
+  .lang-sel{appearance:none;-webkit-appearance:none;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;padding:5px 26px 5px 10px;cursor:pointer;outline:none;transition:border-color .2s,background .2s,color .2s}
+  .lang-sel:hover,.lang-sel:focus-visible{border-color:var(--accent2);background:var(--accent-dim);color:var(--accent);outline:2px solid var(--ring);outline-offset:2px}
+  .lang-sel option{background:var(--sel-bg);color:var(--text)}
+  .lang-arr{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-dim);font-size:.55rem}
+  main{width:100%;max-width:1200px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:20px;transition:background .3s,border-color .3s}
+  .panel-head{padding:10px 18px;background:var(--panel-tint);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);transition:all .3s}
+  .panel-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+  .panel-body{padding:20px 22px}
+  label{font-family:var(--mono);font-size:.63rem;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;display:block;margin-bottom:6px}
+  input{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:.95rem;padding:10px 14px;outline:none;width:100%;transition:border-color .2s,box-shadow .2s,background .3s;min-height:44px}
+  input:focus-visible{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(0,212,255,.20)}
+  input[aria-invalid="true"]{border-color:var(--err);box-shadow:0 0 0 2px rgba(255,78,106,.2)}
+  input::placeholder{color:var(--text-dim)}
+  .submit-row{margin-top:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .btn-submit{display:flex;align-items:center;gap:9px;background:var(--accent-dim);border:1px solid var(--accent2);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:10px 26px;border-radius:4px;cursor:pointer;position:relative;overflow:hidden;transition:background .2s,box-shadow .2s;min-height:44px}
+  .btn-submit::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,212,255,.12),transparent);transform:translateX(-100%);transition:transform .4s}
+  .btn-submit:hover::before{transform:translateX(100%)}
+  .btn-submit:hover{box-shadow:0 0 20px rgba(0,144,204,.25);filter:brightness(1.08)}
+  .btn-submit:active{transform:scale(.98)}.btn-submit:disabled{opacity:.4;cursor:not-allowed}
+  .btn-submit:focus-visible{outline:3px solid var(--ring);outline-offset:3px}
+  .spinner{display:none;width:16px;height:16px;border:2px solid rgba(0,212,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  .loading .spinner{display:block}.loading .send-icon{display:none}
+  .query-hint{font-family:var(--mono);font-size:.67rem;color:var(--text-dim)}
+  #results-panel{display:none}
+
+  /* ── Country card hero ── */
+  .country-hero{display:flex;align-items:center;gap:24px;padding:24px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .country-flag{font-size:4rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
+  .country-title{flex:1;min-width:200px}
+  .country-name-common{font-size:1.7rem;font-weight:700;color:var(--text);line-height:1.2}
+  .country-name-official{font-size:.78rem;color:var(--text-mid);margin-top:4px;font-style:italic}
+  .country-codes{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .code-badge{font-family:var(--mono);font-size:.65rem;font-weight:700;letter-spacing:.12em;padding:3px 10px;border-radius:3px;border:1px solid var(--border-hi);color:var(--accent);background:var(--accent-dim)}
+  .country-meta-pills{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .mpill{font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.1em;padding:2px 9px;border-radius:12px;text-transform:uppercase}
+  .mpill-ok{background:var(--ok-dim);color:var(--ok);border:1px solid var(--ok)}
+  .mpill-warn{background:var(--warn-dim);color:var(--warn);border:1px solid var(--warn)}
+  .mpill-err{background:var(--err-dim);color:var(--err);border:1px solid var(--err)}
+  .mpill-neutral{background:var(--panel-tint);color:var(--text-mid);border:1px solid var(--border)}
+
+  /* ── Data grid ── */
+  .data-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0;border-top:1px solid var(--border)}
+  .data-section{padding:18px 22px;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+  .data-section:last-child{border-right:none}
+  .section-title{font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+  .kv-list{display:flex;flex-direction:column;gap:7px}
+  .kv-row{display:flex;align-items:baseline;gap:8px;min-height:22px}
+  .kv-key{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);flex-shrink:0;min-width:130px}
+  .kv-val{font-family:var(--mono);font-size:.8rem;color:var(--text);word-break:break-word}
+  .kv-val.accent{color:var(--accent)}
+  .kv-val.ok{color:var(--ok)}
+  .kv-val.warn{color:var(--warn)}
+  .kv-val.err{color:var(--err)}
+  .kv-val.muted{color:var(--text-mid)}
+  .tag-list{display:flex;flex-wrap:wrap;gap:4px}
+  .tag{font-family:var(--mono);font-size:.62rem;padding:2px 7px;border-radius:3px;background:var(--panel-tint);border:1px solid var(--border);color:var(--text-mid)}
+
+  /* Legal indicator */
+  .legal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:4px}
+  .legal-item{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.62rem;padding:5px 8px;border-radius:3px;border:1px solid var(--border);background:var(--panel-tint)}
+  .legal-item.active{border-color:var(--ok);background:var(--ok-dim);color:var(--ok)}
+  .legal-item.inactive{opacity:.5}
+  .legal-item.sanctioned{border-color:var(--err);background:var(--err-dim);color:var(--err)}
+  .legal-item.grey-list{border-color:var(--warn);background:var(--warn-dim);color:var(--warn)}
+  .li-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .legal-item.active .li-dot{background:var(--ok)}
+  .legal-item.inactive .li-dot{background:var(--text-dim)}
+  .legal-item.sanctioned .li-dot{background:var(--err)}
+  .legal-item.grey-list .li-dot{background:var(--warn)}
+
+  /* GDP bar */
+  .gdp-bar-wrap{margin-top:6px}
+  .gdp-label{font-family:var(--mono);font-size:.6rem;color:var(--text-dim);margin-bottom:3px}
+  .gdp-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .gdp-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .6s ease}
+
+  /* Coord display */
+  .coord-display{display:flex;gap:12px;flex-wrap:wrap}
+  .coord-item{font-family:var(--mono);font-size:.75rem;color:var(--accent)}
+
+  /* Error / notfound */
+  .result-error{padding:20px 22px}
+  .badge{font-family:var(--mono);font-size:.63rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:3px}
+  .badge-error{background:var(--err-dim);color:var(--err);border:1px solid var(--err)}
+  .badge-notfound{background:var(--warn-dim);color:var(--warn);border:1px solid var(--warn)}
+  .badge-ok{background:var(--ok-dim);color:var(--ok);border:1px solid var(--ok)}
+  .result-meta{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .result-time{margin-left:auto;font-family:var(--mono);font-size:.67rem;color:var(--text-dim)}
+
+  .btn-copy{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-family:var(--mono);font-size:.63rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;cursor:pointer;white-space:nowrap;transition:border-color .2s,background .2s,color .2s;min-height:28px}
+  .btn-copy:hover{border-color:var(--accent2);background:var(--accent-dim);color:var(--accent)}
+  .btn-copy.copied{border-color:var(--ok);color:var(--ok);background:var(--ok-dim)}
+  .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+  footer{margin-top:48px;font-family:var(--mono);font-size:.6rem;color:var(--text-dim);letter-spacing:.08em;text-align:center;opacity:.45}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+  @media(max-width:700px){.data-grid{grid-template-columns:1fr}.data-section{border-right:none}.country-flag{font-size:3rem}.country-name-common{font-size:1.3rem}.theme-label{display:none}}
+  [dir="rtl"] .header-right{margin-left:0;margin-right:auto}
+  [dir="rtl"] .lang-arr{right:auto;left:8px}
+  [dir="rtl"] .lang-sel{padding:5px 10px 5px 26px}
+  [dir="rtl"] .result-time{margin-left:0;margin-right:auto}
+  [dir="rtl"] .kv-key{text-align:right}
+  [dir="rtl"] .section-title::after{display:none}
+  [dir="rtl"] .section-title::before{content:'';flex:1;height:1px;background:var(--border)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content" id="skip-link">Skip to main content</a>
+<header role="banner">
+  <svg class="logo-globe" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="21" cy="21" r="19" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    <ellipse cx="21" cy="21" rx="9" ry="19" fill="none" stroke="var(--accent)" stroke-width="1"/>
+    <line x1="2" y1="21" x2="40" y2="21" stroke="var(--accent)" stroke-width="1"/>
+    <line x1="21" y1="2" x2="21" y2="40" stroke="var(--accent)" stroke-width="1"/>
+    <ellipse cx="21" cy="21" rx="19" ry="7" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  </svg>
+  <div class="header-text">
+    <h1>http2country</h1>
+    <p id="hdr-subtitle">Country Intelligence · ISO Lookup</p>
+  </div>
+  <div class="header-right">
+    <div class="lang-wrap">
+      <label for="lang-sel" class="visually-hidden" id="lang-sel-lbl">Language</label>
+      <select class="lang-sel" id="lang-sel" title="Language">
+        <option value="ar">AR</option><option value="bn">BN</option>
+        <option value="de">DE</option><option value="en">EN</option>
+        <option value="es">ES</option><option value="fr">FR</option>
+        <option value="hi">HI</option><option value="id">ID</option>
+        <option value="ja">JA</option><option value="ko">KO</option>
+        <option value="pt-BR">PT</option><option value="ru">RU</option>
+        <option value="ur">UR</option><option value="vi">VI</option>
+        <option value="zh-CN">ZH</option>
+      </select>
+      <span class="lang-arr" aria-hidden="true">▾</span>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle color theme">
+      <span class="theme-icon" id="theme-icon" aria-hidden="true">☀️</span>
+      <div class="theme-track" aria-hidden="true"><div class="theme-thumb"></div></div>
+      <span class="theme-label" id="theme-label"></span>
+    </button>
+  </div>
+</header>
+<main id="main-content" role="main">
+  <div id="sr-status" aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;"></div>
+  <section class="panel" aria-labelledby="ph-params">
+    <div class="panel-head" id="ph-params" role="heading" aria-level="2"></div>
+    <div class="panel-body">
+      <form id="country-form" novalidate>
+        <div>
+          <label id="lbl-country" for="inp-country"></label>
+          <input type="text" id="inp-country" autocomplete="off" spellcheck="false"
+                 aria-labelledby="lbl-country" aria-describedby="inp-hint"
+                 aria-required="true" aria-invalid="false">
+          <div class="query-hint" id="inp-hint" style="margin-top:6px"></div>
+        </div>
+        <div class="submit-row">
+          <button class="btn-submit" id="btn-query" type="submit">
+            <svg class="send-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <div class="spinner" aria-hidden="true"></div>
+            <span id="btn-send-label"></span>
+          </button>
+          <span class="query-hint" id="query-hint" aria-live="assertive" role="status"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+  <section class="panel" id="results-panel" aria-labelledby="ph-results" aria-live="polite">
+    <div class="panel-head" id="ph-results" role="heading" aria-level="2"></div>
+    <div id="results-body"></div>
+  </section>
+</main>
+<footer role="contentinfo">HTTP2COUNTRY · COUNTRY INTELLIGENCE · v1.0</footer>
+<script>
+// ══════════════════════════════════════════════════════════
+// I18N — 15 LANGUAGES
+// ══════════════════════════════════════════════════════════
+const LANGS={
+ar:{dir:'rtl',subtitle:'معلومات الدول · بحث ISO',panelParams:'معاملات البحث',labelCountry:'رمز الدولة',placeholder:'مثال: FR أو FRA أو 250',hint:'ISO2 · ISO3 · رمز رقمي (حروف كبيرة أو صغيرة)',btnSend:'بحث',panelResults:'نتائج',themeLight:'فاتح',themeDark:'داكن',
+  secIdentity:'الهوية',secGeo:'الجغرافيا',secLanguages:'اللغات والعملات',secDemographics:'السكان والاقتصاد',secLegal:'الإطار القانوني',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'الرمز الرقمي',kFIFA:'رمز فيفا',kStatus:'الوضع',kIndependent:'مستقل',kUNMember:'عضو أمم متحدة',
+  kRegion:'المنطقة',kSubregion:'المنطقة الفرعية',kCapital:'العاصمة',kCoords:'الإحداثيات',kArea:'المساحة',kLandlocked:'محاط باليابسة',kBorders:'الحدود',
+  kLanguages:'اللغات',kCurrencies:'العملات',kTLD:'النطاق الأعلى',kCalling:'رمز الاتصال',kDemonymM:'المذكر',kDemonymF:'المؤنث',
+  kGINI:'معامل جيني',kGDP:'الناتج المحلي',kGDPPC:'نصيب الفرد',
+  kEU:'الاتحاد الأوروبي',kEEA:'المنطقة الاقتصادية الأوروبية',kSchengen:'شنغن',kGDPR:'اللائحة الأوروبية للبيانات',kDataRes:'إقامة البيانات',kVAT:'ضريبة القيمة المضافة',kDigVAT:'الضريبة الرقمية',kOFAC:'قائمة OFAC',kEUSanct:'عقوبات أوروبية',kUNSanct:'عقوبات أممية',kFATF:'FATF',
+  vYes:'نعم',vNo:'لا',vNA:'غير متاح',errBadge:'خطأ',notfoundBadge:'غير موجود',okBadge:'تم',warnEmpty:'⚠ أدخل رمز الدولة',loading:'جارٍ البحث…',skipLink:'انتقل إلى المحتوى'},
+bn:{dir:'ltr',subtitle:'দেশ তথ্য · ISO অনুসন্ধান',panelParams:'অনুসন্ধান পরামিতি',labelCountry:'দেশ কোড',placeholder:'যেমন: FR বা FRA বা 250',hint:'ISO2 · ISO3 · সংখ্যাসূচক কোড (বড় বা ছোট হাতের)',btnSend:'অনুসন্ধান',panelResults:'ফলাফল',themeLight:'হালকা',themeDark:'গাঢ়',
+  secIdentity:'পরিচয়',secGeo:'ভূগোল',secLanguages:'ভাষা ও মুদ্রা',secDemographics:'জনসংখ্যা ও অর্থনীতি',secLegal:'আইনি কাঠামো',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'সংখ্যাসূচক',kFIFA:'ফিফা',kStatus:'অবস্থা',kIndependent:'স্বাধীন',kUNMember:'জাতিসংঘ সদস্য',
+  kRegion:'অঞ্চল',kSubregion:'উপ-অঞ্চল',kCapital:'রাজধানী',kCoords:'স্থানাঙ্ক',kArea:'আয়তন',kLandlocked:'স্থলবেষ্টিত',kBorders:'সীমানা',
+  kLanguages:'ভাষা',kCurrencies:'মুদ্রা',kTLD:'TLD',kCalling:'কলিং কোড',kDemonymM:'পুংলিঙ্গ',kDemonymF:'স্ত্রীলিঙ্গ',
+  kGINI:'জিনি সহগ',kGDP:'জিডিপি',kGDPPC:'মাথাপিছু জিডিপি',
+  kEU:'ইইউ',kEEA:'ইইএ',kSchengen:'শেনজেন',kGDPR:'জিডিপিআর',kDataRes:'ডেটা বাসস্থান',kVAT:'ভ্যাট',kDigVAT:'ডিজিটাল ভ্যাট',kOFAC:'ওএফএসি',kEUSanct:'ইইউ নিষেধাজ্ঞা',kUNSanct:'জাতিসংঘ নিষেধাজ্ঞা',kFATF:'এফএটিএফ',
+  vYes:'হ্যাঁ',vNo:'না',vNA:'N/A',errBadge:'ত্রুটি',notfoundBadge:'পাওয়া যায়নি',okBadge:'সফল',warnEmpty:'⚠ একটি দেশ কোড লিখুন',loading:'অনুসন্ধান হচ্ছে…',skipLink:'মূল বিষয়বস্তুতে যান'},
+de:{dir:'ltr',subtitle:'Länderinformationen · ISO-Suche',panelParams:'Suchparameter',labelCountry:'Ländercode',placeholder:'z.B.: DE oder DEU oder 276',hint:'ISO2 · ISO3 · Numerischer Code (Groß-/Kleinschreibung egal)',btnSend:'Suchen',panelResults:'Ergebnisse',themeLight:'Hell',themeDark:'Dunkel',
+  secIdentity:'Identität',secGeo:'Geographie',secLanguages:'Sprachen & Währungen',secDemographics:'Demografie & Wirtschaft',secLegal:'Rechtlicher Rahmen',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numerisch',kFIFA:'FIFA',kStatus:'Status',kIndependent:'Unabhängig',kUNMember:'UN-Mitglied',
+  kRegion:'Region',kSubregion:'Subregion',kCapital:'Hauptstadt',kCoords:'Koordinaten',kArea:'Fläche',kLandlocked:'Binnenland',kBorders:'Grenzen',
+  kLanguages:'Sprachen',kCurrencies:'Währungen',kTLD:'TLD',kCalling:'Vorwahl',kDemonymM:'Männlich',kDemonymF:'Weiblich',
+  kGINI:'Gini-Index',kGDP:'BIP',kGDPPC:'BIP pro Kopf',
+  kEU:'EU',kEEA:'EWR',kSchengen:'Schengen',kGDPR:'DSGVO',kDataRes:'Datenspeicherort',kVAT:'MwSt.',kDigVAT:'Digitale MwSt.',kOFAC:'OFAC-Liste',kEUSanct:'EU-Sanktionen',kUNSanct:'UN-Sanktionen',kFATF:'FATF',
+  vYes:'Ja',vNo:'Nein',vNA:'N/V',errBadge:'FEHLER',notfoundBadge:'NICHT GEFUNDEN',okBadge:'OK',warnEmpty:'⚠ Bitte Ländercode eingeben',loading:'Wird gesucht…',skipLink:'Zum Hauptinhalt'},
+en:{dir:'ltr',subtitle:'Country Intelligence · ISO Lookup',panelParams:'Query Parameters',labelCountry:'Country Code',placeholder:'e.g.: FR or FRA or 250',hint:'ISO2 · ISO3 · Numeric code (case-insensitive)',btnSend:'Look up',panelResults:'Results',themeLight:'Light',themeDark:'Dark',
+  secIdentity:'Identity',secGeo:'Geography',secLanguages:'Languages & Currencies',secDemographics:'Demographics & Economics',secLegal:'Legal Framework',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numeric',kFIFA:'FIFA',kStatus:'Status',kIndependent:'Independent',kUNMember:'UN Member',
+  kRegion:'Region',kSubregion:'Subregion',kCapital:'Capital',kCoords:'Coordinates',kArea:'Area',kLandlocked:'Landlocked',kBorders:'Borders',
+  kLanguages:'Languages',kCurrencies:'Currencies',kTLD:'TLD',kCalling:'Calling Code',kDemonymM:'Demonym (M)',kDemonymF:'Demonym (F)',
+  kGINI:'GINI Index',kGDP:'GDP (USD)',kGDPPC:'GDP per capita',
+  kEU:'EU Member',kEEA:'EEA Member',kSchengen:'Schengen',kGDPR:'GDPR Applies',kDataRes:'Data Residency',kVAT:'VAT Rate',kDigVAT:'Digital VAT',kOFAC:'OFAC Sanctioned',kEUSanct:'EU Sanction',kUNSanct:'UN Sanction',kFATF:'FATF Status',
+  vYes:'Yes',vNo:'No',vNA:'N/A',errBadge:'ERROR',notfoundBadge:'NOT FOUND',okBadge:'OK',warnEmpty:'⚠ Enter a country code',loading:'Looking up…',skipLink:'Skip to main content'},
+es:{dir:'ltr',subtitle:'Inteligencia de Países · Búsqueda ISO',panelParams:'Parámetros de Consulta',labelCountry:'Código de País',placeholder:'ej.: ES o ESP o 724',hint:'ISO2 · ISO3 · Código numérico (mayúsculas o minúsculas)',btnSend:'Buscar',panelResults:'Resultados',themeLight:'Claro',themeDark:'Oscuro',
+  secIdentity:'Identidad',secGeo:'Geografía',secLanguages:'Idiomas y Monedas',secDemographics:'Demografía y Economía',secLegal:'Marco Legal',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numérico',kFIFA:'FIFA',kStatus:'Estado',kIndependent:'Independiente',kUNMember:'Miembro ONU',
+  kRegion:'Región',kSubregion:'Subregión',kCapital:'Capital',kCoords:'Coordenadas',kArea:'Área',kLandlocked:'Sin salida al mar',kBorders:'Fronteras',
+  kLanguages:'Idiomas',kCurrencies:'Monedas',kTLD:'TLD',kCalling:'Prefijo',kDemonymM:'Gentilicio (M)',kDemonymF:'Gentilicio (F)',
+  kGINI:'Índice GINI',kGDP:'PIB (USD)',kGDPPC:'PIB per cápita',
+  kEU:'UE',kEEA:'EEE',kSchengen:'Schengen',kGDPR:'RGPD',kDataRes:'Residencia de Datos',kVAT:'IVA',kDigVAT:'IVA Digital',kOFAC:'OFAC',kEUSanct:'Sanción UE',kUNSanct:'Sanción ONU',kFATF:'GAFI',
+  vYes:'Sí',vNo:'No',vNA:'N/D',errBadge:'ERROR',notfoundBadge:'NO ENCONTRADO',okBadge:'OK',warnEmpty:'⚠ Introduce un código de país',loading:'Buscando…',skipLink:'Saltar al contenido'},
+fr:{dir:'ltr',subtitle:'Renseignements Pays · Recherche ISO',panelParams:'Paramètres de requête',labelCountry:'Code Pays',placeholder:'ex: FR ou FRA ou 250',hint:'ISO2 · ISO3 · Code numérique (majuscules ou minuscules)',btnSend:'Rechercher',panelResults:'Résultats',themeLight:'Clair',themeDark:'Sombre',
+  secIdentity:'Identité',secGeo:'Géographie',secLanguages:'Langues et Devises',secDemographics:'Démographie et Économie',secLegal:'Cadre Juridique',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numérique',kFIFA:'FIFA',kStatus:'Statut',kIndependent:'Indépendant',kUNMember:'Membre ONU',
+  kRegion:'Région',kSubregion:'Sous-région',kCapital:'Capitale',kCoords:'Coordonnées',kArea:'Superficie',kLandlocked:'Enclavé',kBorders:'Frontières',
+  kLanguages:'Langues',kCurrencies:'Devises',kTLD:'Domaine',kCalling:'Indicatif',kDemonymM:'Gentilé (M)',kDemonymF:'Gentilé (F)',
+  kGINI:'Indice GINI',kGDP:'PIB (USD)',kGDPPC:'PIB par habitant',
+  kEU:'UE',kEEA:'EEE',kSchengen:'Schengen',kGDPR:'RGPD',kDataRes:'Résidence des données',kVAT:'TVA',kDigVAT:'TVA numérique',kOFAC:'OFAC',kEUSanct:'Sanction UE',kUNSanct:'Sanction ONU',kFATF:'GAFI',
+  vYes:'Oui',vNo:'Non',vNA:'N/D',errBadge:'ERREUR',notfoundBadge:'NON TROUVÉ',okBadge:'OK',warnEmpty:'⚠ Entrez un code pays',loading:'Recherche en cours…',skipLink:'Aller au contenu'},
+hi:{dir:'ltr',subtitle:'देश जानकारी · ISO खोज',panelParams:'क्वेरी पैरामीटर',labelCountry:'देश कोड',placeholder:'जैसे: IN या IND या 356',hint:'ISO2 · ISO3 · संख्यात्मक कोड (अपर/लोअर केस)',btnSend:'खोजें',panelResults:'परिणाम',themeLight:'हल्का',themeDark:'गहरा',
+  secIdentity:'पहचान',secGeo:'भूगोल',secLanguages:'भाषाएं और मुद्राएं',secDemographics:'जनसांख्यिकी और अर्थव्यवस्था',secLegal:'कानूनी ढांचा',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'संख्यात्मक',kFIFA:'फीफा',kStatus:'स्थिति',kIndependent:'स्वतंत्र',kUNMember:'UN सदस्य',
+  kRegion:'क्षेत्र',kSubregion:'उप-क्षेत्र',kCapital:'राजधानी',kCoords:'निर्देशांक',kArea:'क्षेत्रफल',kLandlocked:'भूमि-बद्ध',kBorders:'सीमाएं',
+  kLanguages:'भाषाएं',kCurrencies:'मुद्राएं',kTLD:'TLD',kCalling:'कॉलिंग कोड',kDemonymM:'पुल्लिंग',kDemonymF:'स्त्रीलिंग',
+  kGINI:'जिनी सूचकांक',kGDP:'जीडीपी (USD)',kGDPPC:'प्रति व्यक्ति जीडीपी',
+  kEU:'EU',kEEA:'EEA',kSchengen:'शेंगेन',kGDPR:'GDPR',kDataRes:'डेटा निवास',kVAT:'VAT',kDigVAT:'डिजिटल VAT',kOFAC:'OFAC',kEUSanct:'EU प्रतिबंध',kUNSanct:'UN प्रतिबंध',kFATF:'FATF',
+  vYes:'हां',vNo:'नहीं',vNA:'N/A',errBadge:'त्रुटि',notfoundBadge:'नहीं मिला',okBadge:'OK',warnEmpty:'⚠ देश कोड दर्ज करें',loading:'खोज रहा है…',skipLink:'मुख्य सामग्री पर जाएं'},
+id:{dir:'ltr',subtitle:'Informasi Negara · Pencarian ISO',panelParams:'Parameter Kueri',labelCountry:'Kode Negara',placeholder:'mis.: ID atau IDN atau 360',hint:'ISO2 · ISO3 · Kode numerik (huruf besar/kecil)',btnSend:'Cari',panelResults:'Hasil',themeLight:'Terang',themeDark:'Gelap',
+  secIdentity:'Identitas',secGeo:'Geografi',secLanguages:'Bahasa & Mata Uang',secDemographics:'Demografi & Ekonomi',secLegal:'Kerangka Hukum',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numerik',kFIFA:'FIFA',kStatus:'Status',kIndependent:'Merdeka',kUNMember:'Anggota PBB',
+  kRegion:'Wilayah',kSubregion:'Sub-wilayah',kCapital:'Ibu Kota',kCoords:'Koordinat',kArea:'Luas',kLandlocked:'Terkurung daratan',kBorders:'Perbatasan',
+  kLanguages:'Bahasa',kCurrencies:'Mata Uang',kTLD:'TLD',kCalling:'Kode Telepon',kDemonymM:'Gentilicum (L)',kDemonymF:'Gentilicum (P)',
+  kGINI:'Indeks GINI',kGDP:'PDB (USD)',kGDPPC:'PDB per kapita',
+  kEU:'EU',kEEA:'EEA',kSchengen:'Schengen',kGDPR:'GDPR',kDataRes:'Residensi Data',kVAT:'PPN',kDigVAT:'PPN Digital',kOFAC:'OFAC',kEUSanct:'Sanksi EU',kUNSanct:'Sanksi PBB',kFATF:'FATF',
+  vYes:'Ya',vNo:'Tidak',vNA:'N/A',errBadge:'KESALAHAN',notfoundBadge:'TIDAK DITEMUKAN',okBadge:'OK',warnEmpty:'⚠ Masukkan kode negara',loading:'Mencari…',skipLink:'Lewati ke konten'},
+ja:{dir:'ltr',subtitle:'国情報 · ISO検索',panelParams:'クエリパラメータ',labelCountry:'国コード',placeholder:'例: JP または JPN または 392',hint:'ISO2 · ISO3 · 数値コード（大文字・小文字不問）',btnSend:'検索',panelResults:'結果',themeLight:'ライト',themeDark:'ダーク',
+  secIdentity:'識別情報',secGeo:'地理',secLanguages:'言語・通貨',secDemographics:'人口統計・経済',secLegal:'法的枠組み',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'数値コード',kFIFA:'FIFA',kStatus:'ステータス',kIndependent:'独立',kUNMember:'国連加盟',
+  kRegion:'地域',kSubregion:'サブ地域',kCapital:'首都',kCoords:'座標',kArea:'面積',kLandlocked:'内陸国',kBorders:'国境',
+  kLanguages:'言語',kCurrencies:'通貨',kTLD:'TLD',kCalling:'国番号',kDemonymM:'国民名(男)',kDemonymF:'国民名(女)',
+  kGINI:'ジニ係数',kGDP:'GDP（USD）',kGDPPC:'一人当たりGDP',
+  kEU:'EU加盟',kEEA:'EEA加盟',kSchengen:'シェンゲン',kGDPR:'GDPR適用',kDataRes:'データ保存地',kVAT:'VAT税率',kDigVAT:'デジタルVAT',kOFAC:'OFAC制裁',kEUSanct:'EU制裁',kUNSanct:'国連制裁',kFATF:'FATF',
+  vYes:'はい',vNo:'いいえ',vNA:'N/A',errBadge:'エラー',notfoundBadge:'未発見',okBadge:'OK',warnEmpty:'⚠ 国コードを入力してください',loading:'検索中…',skipLink:'メインコンテンツへ'},
+ko:{dir:'ltr',subtitle:'국가 정보 · ISO 조회',panelParams:'쿼리 매개변수',labelCountry:'국가 코드',placeholder:'예: KR 또는 KOR 또는 410',hint:'ISO2 · ISO3 · 숫자 코드 (대소문자 구분 없음)',btnSend:'조회',panelResults:'결과',themeLight:'라이트',themeDark:'다크',
+  secIdentity:'식별 정보',secGeo:'지리',secLanguages:'언어 및 통화',secDemographics:'인구통계 및 경제',secLegal:'법적 프레임워크',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'숫자 코드',kFIFA:'FIFA',kStatus:'상태',kIndependent:'독립국',kUNMember:'UN 회원국',
+  kRegion:'지역',kSubregion:'하위 지역',kCapital:'수도',kCoords:'좌표',kArea:'면적',kLandlocked:'내륙국',kBorders:'접경국',
+  kLanguages:'언어',kCurrencies:'통화',kTLD:'TLD',kCalling:'국가 번호',kDemonymM:'국민명(남)',kDemonymF:'국민명(여)',
+  kGINI:'지니 계수',kGDP:'GDP(USD)',kGDPPC:'1인당 GDP',
+  kEU:'EU 회원',kEEA:'EEA 회원',kSchengen:'솅겐',kGDPR:'GDPR',kDataRes:'데이터 거주',kVAT:'부가세율',kDigVAT:'디지털 부가세',kOFAC:'OFAC 제재',kEUSanct:'EU 제재',kUNSanct:'UN 제재',kFATF:'FATF',
+  vYes:'예',vNo:'아니오',vNA:'N/A',errBadge:'오류',notfoundBadge:'없음',okBadge:'OK',warnEmpty:'⚠ 국가 코드를 입력하세요',loading:'조회 중…',skipLink:'본문으로 건너뛰기'},
+'pt-BR':{dir:'ltr',subtitle:'Inteligência de Países · Pesquisa ISO',panelParams:'Parâmetros da Consulta',labelCountry:'Código do País',placeholder:'ex.: BR ou BRA ou 076',hint:'ISO2 · ISO3 · Código numérico (maiúsculas ou minúsculas)',btnSend:'Pesquisar',panelResults:'Resultados',themeLight:'Claro',themeDark:'Escuro',
+  secIdentity:'Identidade',secGeo:'Geografia',secLanguages:'Idiomas e Moedas',secDemographics:'Demografia e Economia',secLegal:'Estrutura Legal',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Numérico',kFIFA:'FIFA',kStatus:'Status',kIndependent:'Independente',kUNMember:'Membro ONU',
+  kRegion:'Região',kSubregion:'Sub-região',kCapital:'Capital',kCoords:'Coordenadas',kArea:'Área',kLandlocked:'Sem saída para o mar',kBorders:'Fronteiras',
+  kLanguages:'Idiomas',kCurrencies:'Moedas',kTLD:'TLD',kCalling:'DDI',kDemonymM:'Gentílico (M)',kDemonymF:'Gentílico (F)',
+  kGINI:'Índice GINI',kGDP:'PIB (USD)',kGDPPC:'PIB per capita',
+  kEU:'UE',kEEA:'EEE',kSchengen:'Schengen',kGDPR:'RGPD',kDataRes:'Residência de Dados',kVAT:'IVA',kDigVAT:'IVA Digital',kOFAC:'OFAC',kEUSanct:'Sanção UE',kUNSanct:'Sanção ONU',kFATF:'GAFI',
+  vYes:'Sim',vNo:'Não',vNA:'N/D',errBadge:'ERRO',notfoundBadge:'NÃO ENCONTRADO',okBadge:'OK',warnEmpty:'⚠ Informe um código de país',loading:'Pesquisando…',skipLink:'Pular para o conteúdo'},
+ru:{dir:'ltr',subtitle:'Информация о странах · Поиск ISO',panelParams:'Параметры запроса',labelCountry:'Код страны',placeholder:'напр.: RU или RUS или 643',hint:'ISO2 · ISO3 · Числовой код (любой регистр)',btnSend:'Поиск',panelResults:'Результаты',themeLight:'Светлая',themeDark:'Тёмная',
+  secIdentity:'Идентификация',secGeo:'География',secLanguages:'Языки и валюты',secDemographics:'Демография и экономика',secLegal:'Правовая база',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Числовой',kFIFA:'FIFA',kStatus:'Статус',kIndependent:'Независимость',kUNMember:'Член ООН',
+  kRegion:'Регион',kSubregion:'Субрегион',kCapital:'Столица',kCoords:'Координаты',kArea:'Площадь',kLandlocked:'Без выхода к морю',kBorders:'Границы',
+  kLanguages:'Языки',kCurrencies:'Валюты',kTLD:'TLD',kCalling:'Телефонный код',kDemonymM:'Жит. (м.р.)',kDemonymF:'Жит. (ж.р.)',
+  kGINI:'Индекс Джини',kGDP:'ВВП (USD)',kGDPPC:'ВВП на душу населения',
+  kEU:'ЕС',kEEA:'ЕЭЗ',kSchengen:'Шенген',kGDPR:'GDPR',kDataRes:'Хранение данных',kVAT:'НДС',kDigVAT:'Цифровой НДС',kOFAC:'Санкции OFAC',kEUSanct:'Санкции ЕС',kUNSanct:'Санкции ООН',kFATF:'FATF',
+  vYes:'Да',vNo:'Нет',vNA:'Н/Д',errBadge:'ОШИБКА',notfoundBadge:'НЕ НАЙДЕНО',okBadge:'OK',warnEmpty:'⚠ Введите код страны',loading:'Поиск…',skipLink:'К основному содержимому'},
+ur:{dir:'rtl',subtitle:'ممالک کی معلومات · ISO تلاش',panelParams:'کوئری پیرامیٹرز',labelCountry:'ملک کا کوڈ',placeholder:'مثلاً: PK یا PAK یا 586',hint:'ISO2 · ISO3 · عددی کوڈ (اپر/لوئر کیس)',btnSend:'تلاش کریں',panelResults:'نتائج',themeLight:'روشن',themeDark:'تاریک',
+  secIdentity:'شناخت',secGeo:'جغرافیہ',secLanguages:'زبانیں اور کرنسیاں',secDemographics:'آبادیات اور معاشیات',secLegal:'قانونی ڈھانچہ',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'عددی',kFIFA:'فیفا',kStatus:'حالت',kIndependent:'آزاد',kUNMember:'اقوام متحدہ کا رکن',
+  kRegion:'خطہ',kSubregion:'ذیلی خطہ',kCapital:'دارالحکومت',kCoords:'نقاط',kArea:'رقبہ',kLandlocked:'زمین میں گھرا',kBorders:'سرحدیں',
+  kLanguages:'زبانیں',kCurrencies:'کرنسیاں',kTLD:'TLD',kCalling:'کالنگ کوڈ',kDemonymM:'مذکر',kDemonymF:'مؤنث',
+  kGINI:'جینی انڈیکس',kGDP:'جی ڈی پی',kGDPPC:'فی کس جی ڈی پی',
+  kEU:'EU',kEEA:'EEA',kSchengen:'شینگن',kGDPR:'GDPR',kDataRes:'ڈیٹا رہائش',kVAT:'VAT',kDigVAT:'ڈیجیٹل VAT',kOFAC:'OFAC',kEUSanct:'EU پابندی',kUNSanct:'UN پابندی',kFATF:'FATF',
+  vYes:'ہاں',vNo:'نہیں',vNA:'N/A',errBadge:'خطا',notfoundBadge:'نہیں ملا',okBadge:'OK',warnEmpty:'⚠ ملک کا کوڈ درج کریں',loading:'تلاش ہو رہا ہے…',skipLink:'مرکزی مواد پر جائیں'},
+vi:{dir:'ltr',subtitle:'Thông tin Quốc gia · Tra cứu ISO',panelParams:'Tham số truy vấn',labelCountry:'Mã quốc gia',placeholder:'vd: VN hoặc VNM hoặc 704',hint:'ISO2 · ISO3 · Mã số (không phân biệt hoa thường)',btnSend:'Tra cứu',panelResults:'Kết quả',themeLight:'Sáng',themeDark:'Tối',
+  secIdentity:'Nhận dạng',secGeo:'Địa lý',secLanguages:'Ngôn ngữ & Tiền tệ',secDemographics:'Nhân khẩu & Kinh tế',secLegal:'Khung pháp lý',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'Số',kFIFA:'FIFA',kStatus:'Trạng thái',kIndependent:'Độc lập',kUNMember:'Thành viên LHQ',
+  kRegion:'Khu vực',kSubregion:'Tiểu vùng',kCapital:'Thủ đô',kCoords:'Tọa độ',kArea:'Diện tích',kLandlocked:'Không giáp biển',kBorders:'Biên giới',
+  kLanguages:'Ngôn ngữ',kCurrencies:'Tiền tệ',kTLD:'TLD',kCalling:'Mã gọi',kDemonymM:'Tộc danh (Nam)',kDemonymF:'Tộc danh (Nữ)',
+  kGINI:'Hệ số GINI',kGDP:'GDP (USD)',kGDPPC:'GDP bình quân',
+  kEU:'EU',kEEA:'EEA',kSchengen:'Schengen',kGDPR:'GDPR',kDataRes:'Lưu trữ dữ liệu',kVAT:'VAT',kDigVAT:'VAT kỹ thuật số',kOFAC:'OFAC',kEUSanct:'Trừng phạt EU',kUNSanct:'Trừng phạt LHQ',kFATF:'FATF',
+  vYes:'Có',vNo:'Không',vNA:'N/A',errBadge:'LỖI',notfoundBadge:'KHÔNG TÌM THẤY',okBadge:'OK',warnEmpty:'⚠ Nhập mã quốc gia',loading:'Đang tra cứu…',skipLink:'Chuyển đến nội dung chính'},
+'zh-CN':{dir:'ltr',subtitle:'国家信息 · ISO 查询',panelParams:'查询参数',labelCountry:'国家代码',placeholder:'例：CN 或 CHN 或 156',hint:'ISO2 · ISO3 · 数字代码（不区分大小写）',btnSend:'查询',panelResults:'结果',themeLight:'浅色',themeDark:'深色',
+  secIdentity:'身份信息',secGeo:'地理',secLanguages:'语言与货币',secDemographics:'人口与经济',secLegal:'法律框架',
+  kISO2:'ISO 2',kISO3:'ISO 3',kNumeric:'数字代码',kFIFA:'FIFA',kStatus:'状态',kIndependent:'独立',kUNMember:'联合国成员',
+  kRegion:'地区',kSubregion:'子地区',kCapital:'首都',kCoords:'坐标',kArea:'面积',kLandlocked:'内陆国',kBorders:'邻国',
+  kLanguages:'语言',kCurrencies:'货币',kTLD:'顶级域',kCalling:'电话区号',kDemonymM:'国民称谓(男)',kDemonymF:'国民称谓(女)',
+  kGINI:'基尼指数',kGDP:'GDP（美元）',kGDPPC:'人均GDP',
+  kEU:'欧盟',kEEA:'欧经区',kSchengen:'申根',kGDPR:'GDPR',kDataRes:'数据存储',kVAT:'增值税',kDigVAT:'数字增值税',kOFAC:'OFAC制裁',kEUSanct:'欧盟制裁',kUNSanct:'联合国制裁',kFATF:'FATF',
+  vYes:'是',vNo:'否',vNA:'N/A',errBadge:'错误',notfoundBadge:'未找到',okBadge:'OK',warnEmpty:'⚠ 请输入国家代码',loading:'查询中…',skipLink:'跳转到主要内容'}
+};
+
+const SUPPORTED=Object.keys(LANGS);
+function detectLang(){
+  for(const l of(navigator.languages||[navigator.language||'en'])){
+    if(SUPPORTED.includes(l))return l;
+    const b=l.split('-')[0];
+    const m=SUPPORTED.find(s=>s===b||s.startsWith(b+'-'));
+    if(m)return m;
+  }
+  return'en';
+}
+
+// ── THEME ──────────────────────────────────────────────────────────────
+const html=document.documentElement;
+const themeBtn=document.getElementById('theme-toggle');
+const themeLbl=document.getElementById('theme-label');
+const themeIcon=document.getElementById('theme-icon');
+let currentLang='en',isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+applyTheme(isDark);
+themeBtn.addEventListener('click',()=>{isDark=!isDark;applyTheme(isDark)});
+function applyTheme(dark){
+  html.dataset.theme=dark?'dark':'light';
+  themeBtn.setAttribute('aria-checked',dark?'false':'true');
+  const t=LANGS[currentLang]||LANGS.en;
+  themeLbl.textContent=dark?t.themeLight:t.themeDark;
+  themeIcon.textContent=dark?'☀️':'🌙';
+}
+
+// ── LANGUAGE ───────────────────────────────────────────────────────────
+function applyLang(lang){
+  currentLang=lang;
+  const t=LANGS[lang]||LANGS.en;
+  const dir=t.dir||'ltr';
+  html.lang=lang;html.dir=dir;document.body.dir=dir;
+  document.getElementById('skip-link').textContent=t.skipLink;
+  document.getElementById('hdr-subtitle').textContent=t.subtitle;
+  document.getElementById('ph-params').textContent=t.panelParams;
+  document.getElementById('lbl-country').textContent=t.labelCountry;
+  document.getElementById('inp-country').placeholder=t.placeholder;
+  document.getElementById('inp-hint').textContent=t.hint;
+  document.getElementById('btn-send-label').textContent=t.btnSend;
+  document.getElementById('ph-results').textContent=t.panelResults;
+  document.getElementById('lang-sel-lbl').textContent=dir==='rtl'?'اللغة':'Language';
+  applyTheme(isDark);
+}
+const langSel=document.getElementById('lang-sel');
+const initLang=detectLang();
+langSel.value=SUPPORTED.includes(initLang)?initLang:'en';
+applyLang(langSel.value);
+langSel.addEventListener('change',()=>applyLang(langSel.value));
+
+// ── SUBMIT ──────────────────────────────────────────────────────────────
+const form=document.getElementById('country-form'),btn=document.getElementById('btn-query'),
+      hint=document.getElementById('query-hint'),srStatus=document.getElementById('sr-status');
+form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const t=LANGS[currentLang]||LANGS.en;
+  const q=document.getElementById('inp-country').value.trim();
+  const inp=document.getElementById('inp-country');
+  if(!q){inp.focus();inp.setAttribute('aria-invalid','true');hint.textContent=t.warnEmpty;hint.style.color='var(--warn)';hint.setAttribute('role','alert');return}
+  inp.setAttribute('aria-invalid','false');hint.textContent='';hint.removeAttribute('role');
+  btn.disabled=true;btn.classList.add('loading');btn.setAttribute('aria-busy','true');srStatus.textContent=t.loading;
+  const t0=performance.now();
+  try{
+    const res=await fetch('/api/v1/country',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({country:q})});
+    const elapsed=((performance.now()-t0)/1000).toFixed(2);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    renderResult(data,q,elapsed);
+    srStatus.textContent=data.status==='SUCCESS'?(data.answer?.name_common||q):'';
+  }catch(err){renderError(err,q,((performance.now()-t0)/1000).toFixed(2))}
+  finally{btn.disabled=false;btn.classList.remove('loading');btn.removeAttribute('aria-busy')}
+});
+document.getElementById('inp-country').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();form.requestSubmit()}});
+
+// ── RENDER ──────────────────────────────────────────────────────────────
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt=n=>n?Number(n).toLocaleString():'—';
+const fmtUSD=n=>n>0?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const fmtPct=n=>n>0?(n.toFixed(1)+'%'):'—';
+const fmtArea=n=>n>0?(Number(n).toLocaleString()+' km²'):'—';
+const fmtCoord=(lat,lon)=>`${lat>=0?'+':''}${lat.toFixed(4)}° / ${lon>=0?'+':''}${lon.toFixed(4)}°`;
+
+function boolBadge(v,t){
+  return v?`<span class="mpill mpill-ok">${esc(t.vYes)}</span>`:`<span class="mpill mpill-neutral">${esc(t.vNo)}</span>`;
+}
+function legalItem(active,label,variant=''){
+  const cls=active?(variant?`legal-item ${variant}`:'legal-item active'):'legal-item inactive';
+  return`<div class="${cls}"><span class="li-dot"></span><span>${esc(label)}</span></div>`;
+}
+function tags(arr){
+  if(!arr||!arr.length)return'—';
+  return arr.map(s=>`<span class="tag">${esc(s)}</span>`).join('');
+}
+function kv(key,val,cls=''){return`<div class="kv-row"><span class="kv-key">${esc(key)}</span><span class="kv-val ${cls}">${val}</span></div>`;}
+
+function renderResult(data,q,elapsed){
+  const panel=document.getElementById('results-panel'),body=document.getElementById('results-body');
+  const t=LANGS[currentLang]||LANGS.en;
+  panel.style.display='block';
+  if((data.status||'').toUpperCase()==='ERROR'){
+    body.innerHTML=`<div class="result-error"><div class="result-meta"><span class="badge badge-error">${esc(t.errBadge)}</span><span class="kv-val muted">${esc(q)}</span><span class="result-time">${elapsed}s</span></div></div>`;
+    finalize(panel);return;
+  }
+  if((data.status||'').toUpperCase()==='NOTFOUND'){
+    body.innerHTML=`<div class="result-error"><div class="result-meta"><span class="badge badge-notfound">${esc(t.notfoundBadge)}</span><span class="kv-val muted">${esc(q)}</span><span class="result-time">${elapsed}s</span></div></div>`;
+    finalize(panel);return;
+  }
+  const a=data.answer;
+  if(!a){body.innerHTML='';panel.style.display='none';return;}
+
+  const fatfClass=a.legal_fatf?'grey-list':'';
+  const ofacClass=a.legal_ofac?'sanctioned':'';
+  const euSanctClass=a.legal_eu_sanction?'sanctioned':'';
+  const unSanctClass=a.legal_un_sanction?'sanctioned':'';
+
+  let html2=`
+<div class="country-hero">
+  <div class="country-flag" aria-hidden="true">${esc(a.flag_emoji||'🏳')}</div>
+  <div class="country-title">
+    <div class="country-name-common">${esc(a.name_common)}</div>
+    <div class="country-name-official">${esc(a.name_official)}</div>
+    <div class="country-codes">
+      <span class="code-badge">${esc(a.iso2)}</span>
+      <span class="code-badge">${esc(a.iso3)}</span>
+      <span class="code-badge">${esc(a.numeric_code||'—')}</span>
+      ${a.fifa?`<span class="code-badge">FIFA ${esc(a.fifa)}</span>`:''}
+    </div>
+    <div class="country-meta-pills">
+      ${a.independent?`<span class="mpill mpill-ok">${esc(t.kIndependent)}</span>`:`<span class="mpill mpill-neutral">Non-independent</span>`}
+      ${a.un_member?`<span class="mpill mpill-ok">${esc(t.kUNMember)}</span>`:''}
+      ${a.landlocked?`<span class="mpill mpill-warn">${esc(t.kLandlocked)}</span>`:''}
+      ${a.legal_eu?`<span class="mpill mpill-ok">EU</span>`:''}
+      ${a.legal_schengen?`<span class="mpill mpill-ok">Schengen</span>`:''}
+      ${a.legal_ofac?`<span class="mpill mpill-err">OFAC</span>`:''}
+      ${a.legal_eu_sanction?`<span class="mpill mpill-err">EU Sanction</span>`:''}
+      ${a.legal_un_sanction?`<span class="mpill mpill-err">UN Sanction</span>`:''}
+      ${a.legal_fatf?`<span class="mpill mpill-warn">FATF: ${esc(a.legal_fatf)}</span>`:''}
+    </div>
+  </div>
+  <div style="margin-left:auto;font-family:var(--mono);font-size:.65rem;color:var(--text-dim)">${elapsed}s</div>
+</div>
+<div class="data-grid">
+
+  <div class="data-section">
+    <div class="section-title">${esc(t.secIdentity)}</div>
+    <div class="kv-list">
+      ${kv(t.kISO2,`<span class="accent">${esc(a.iso2)}</span>`,'accent')}
+      ${kv(t.kISO3,esc(a.iso3),'accent')}
+      ${kv(t.kNumeric,esc(a.numeric_code||t.vNA))}
+      ${a.fifa?kv(t.kFIFA,esc(a.fifa)):''}
+      ${kv(t.kStatus,esc(a.status||t.vNA))}
+      ${kv(t.kIndependent,boolBadge(a.independent,t))}
+      ${kv(t.kUNMember,boolBadge(a.un_member,t))}
+      ${a.demonym_eng_m?kv(t.kDemonymM,esc(a.demonym_eng_m)):''}
+      ${a.demonym_eng_f?kv(t.kDemonymF,esc(a.demonym_eng_f)):''}
+    </div>
+  </div>
+
+  <div class="data-section">
+    <div class="section-title">${esc(t.secGeo)}</div>
+    <div class="kv-list">
+      ${kv(t.kRegion,esc(a.region||t.vNA),'accent')}
+      ${a.subregion?kv(t.kSubregion,esc(a.subregion)):''}
+      ${a.capital?kv(t.kCapital,esc(a.capital)):''}
+      ${kv(t.kCoords,`<div class="coord-display"><span class="kv-val accent">${a.latitude.toFixed(4)}°N</span><span class="kv-val accent">${a.longitude.toFixed(4)}°E</span></div>`)}
+      ${kv(t.kArea,fmtArea(a.area_sq_km))}
+      ${kv(t.kLandlocked,boolBadge(a.landlocked,t))}
+      ${(a.borders&&a.borders.length)?kv(t.kBorders,`<div class="tag-list">${a.borders.map(b=>`<span class="tag">${esc(b)}</span>`).join('')}</div>`):''}
+    </div>
+  </div>
+
+  <div class="data-section">
+    <div class="section-title">${esc(t.secLanguages)}</div>
+    <div class="kv-list">
+      ${(a.language_codes&&a.language_codes.length)?kv(t.kLanguages,`<div class="tag-list">${tags(a.language_codes)}</div>`):''}
+      ${(a.currency_codes&&a.currency_codes.length)?kv(t.kCurrencies,`<div class="tag-list">${tags(a.currency_codes)}</div>`):''}
+      ${(a.tld&&a.tld.length)?kv(t.kTLD,`<div class="tag-list">${tags(a.tld)}</div>`):''}
+      ${(a.calling_codes&&a.calling_codes.length)?kv(t.kCalling,`<div class="tag-list">${tags(a.calling_codes)}</div>`):''}
+    </div>
+  </div>
+
+  <div class="data-section">
+    <div class="section-title">${esc(t.secDemographics)}</div>
+    <div class="kv-list">
+      ${a.gdp_current_usd>0?kv(t.kGDP,`<span class="kv-val ok">${fmtUSD(a.gdp_current_usd)}</span>`):''}
+      ${a.gdp_per_capita_usd>0?kv(t.kGDPPC,`<span class="kv-val ok">${fmtUSD(a.gdp_per_capita_usd)}</span>`):''}
+      ${a.gdp_year?kv('GDP Year',esc(a.gdp_year)):''}
+      ${a.gini_value>0?kv(t.kGINI,`<span class="kv-val warn">${a.gini_value.toFixed(1)}${a.gini_year?' ('+a.gini_year+')':''}</span>`):''}
+    </div>
+  </div>
+
+  <div class="data-section" style="grid-column:1/-1">
+    <div class="section-title">${esc(t.secLegal)}</div>
+    <div class="legal-grid">
+      ${legalItem(a.legal_eu,t.kEU)}
+      ${legalItem(a.legal_eea,t.kEEA)}
+      ${legalItem(a.legal_schengen,t.kSchengen)}
+      ${legalItem(a.legal_gdpr,t.kGDPR)}
+      ${legalItem(a.legal_data_residency,t.kDataRes)}
+      ${legalItem(a.legal_digital_vat,t.kDigVAT)}
+      ${legalItem(a.legal_ofac,t.kOFAC,ofacClass)}
+      ${legalItem(a.legal_eu_sanction,t.kEUSanct,euSanctClass)}
+      ${legalItem(a.legal_un_sanction,t.kUNSanct,unSanctClass)}
+    </div>
+    ${a.legal_vat_rate>0?`<div style="margin-top:12px" class="kv-list">
+      ${kv(t.kVAT,`<span class="kv-val accent">${fmtPct(a.legal_vat_rate)}${a.legal_vat_name?' ('+esc(a.legal_vat_name)+')':''}</span>`)}
+    </div>`:''}
+    ${a.legal_fatf?`<div style="margin-top:8px" class="kv-list">${kv(t.kFATF,`<span class="kv-val warn">${esc(a.legal_fatf)}</span>`)}</div>`:''}
+  </div>
+
+</div>`;
+  body.innerHTML=html2;
+  finalize(panel);
+}
+
+function renderError(err,q,elapsed){
+  const panel=document.getElementById('results-panel'),body=document.getElementById('results-body');
+  const t=LANGS[currentLang]||LANGS.en;
+  panel.style.display='block';
+  body.innerHTML=`<div class="result-error"><div class="result-meta"><span class="badge badge-error">${esc(t.errBadge)}</span><span class="kv-val muted">${esc(q)}</span><span class="result-time">${elapsed}s</span></div><div style="color:var(--err);font-family:var(--mono);font-size:.78rem">${esc(String(err))}</div></div>`;
+  finalize(panel);
+}
+
+function finalize(panel){panel.scrollIntoView({behavior:'smooth',block:'nearest'});panel.setAttribute('tabindex','-1');panel.focus({preventScroll:true})}
+</script>
+</body>
+</html>
