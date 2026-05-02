@@ -4,7 +4,7 @@
     "title": "http2country — Country Intelligence API",
     "description": "Returns structured country information from the letstool CDN database. Accepts ISO 3166-1 alpha-2, alpha-3, or numeric country codes (case-insensitive). The database is built automatically from a gzipped CSV at https://cdn.letstool.net/country/csv and refreshed every 24 hours.",
     "version": "1.0.0",
-    "license": { "name": "MIT" }
+    "license": { "name": "Apache-2.0" }
   },
   "servers": [{ "url": "http://localhost:8080", "description": "Local server" }],
   "paths": {
